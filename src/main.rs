@@ -8,14 +8,10 @@ use rusqlite::Error;
 
 use mc_classic;
 
-mod convert;
-
 const INPUT_FOLDER: &str = "input";
 const INPUT_FILE: &str = "level.dat";
-const OUTPUT_MODE: u8 = 0;
 const OUTPUT_FOLDER: &str = "output";
-const OUTPUT_FILE: &str = "localStorage.js";
-const OUTPUT_WEBSITE: &str = "https://classic.minecraft.net";
+const OUTPUT_FILE: &str = "level.mclevel";
 
 #[derive(Deserialize, Debug)]
 struct Config {
@@ -48,8 +44,8 @@ pub enum GeneralError {
     #[error("Classic Error")]
     ClassicError(#[from] mc_classic::ClassicError),
 
-    #[error("Conversion Error")]
-    ConversionError(#[from] convert::ConversionError),
+    //#[error("Conversion Error")]
+    //ConversionError(#[from] convert::ConversionError),
 
     #[error("Write Error")]
     WriteError(#[from] rusqlite::Error),
@@ -96,39 +92,7 @@ fn main () {
     };
 
     println!("Converting level");
-    let js: mc_classic_js::Data = match convert::classic_to_js(classic, 1, 1) {
-        Ok(c) => c,
-        Err(e) => {
-            throw(GeneralError::ConversionError(e));
-            exit(1)
-        }
-    };
 
-    println!("Serializing level");
-    let serialized: [String; 2] = mc_classic_js::serialize_data(js);
-
-    println!("Writing level");
-
-    match config.output_settings.output_mode {
-        0 => {
-             _ = match mc_classic_js::write_data(config.output_settings.output_folder, serialized, config.output_settings.output_website)  {
-                Ok(c) => c,
-                Err(e) => {
-                    throw(GeneralError::WriteError(e));
-                    exit(1)
-                }
-            };
-        },
-        1 => {
-           _ = mc_classic_js::write_local_storage_command(
-            config.output_settings.output_folder + "/" + &config.output_settings.output_file,
-            serialized)
-        }
-        _ => {
-            throw(GeneralError::InvalidMode(config.output_settings.output_mode));
-            exit(1);
-        }
-    }
 
     println!("Press Enter to Exit");
     let mut s: String = String::from("");
@@ -149,13 +113,9 @@ fn build_settings () -> Result<(),GeneralError>{
     file.write(format!(r#"input-file = "{INPUT_FILE}""#).as_bytes())?;
     file.write("\n\n".as_bytes())?;
     file.write("[output-settings]\n".as_bytes())?;
-    file.write(format!(r#"output-mode = {OUTPUT_MODE}"#).as_bytes())?;
-    file.write("\n".as_bytes())?;
     file.write(format!(r#"output-folder = "{OUTPUT_FOLDER}""#).as_bytes())?;
     file.write("\n".as_bytes())?;
     file.write(format!(r#"output-file = "{OUTPUT_FILE}""#).as_bytes())?;
-    file.write("\n".as_bytes())?;
-    file.write(format!(r#"output-website = "{OUTPUT_WEBSITE}""#).as_bytes())?;
     return Ok(())
 }
 
